@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Información de tu Cachorro - Xolos Ramírez</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif; color: #333333;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        
+        <tr>
+            <td style="background-color: #2c3e50; padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 2px;">XOLOS RAMÍREZ</h1>
+            </td>
+        </tr>
+        
+        <tr>
+            <td style="padding: 30px 30px 10px 30px;">
+                <p style="font-size: 16px; line-height: 1.6; margin-top: 0;">Hola <strong>{{nombre_cliente}}</strong>,</p>
+                <p style="font-size: 16px; line-height: 1.6;">Gracias por tu interés en nuestra crianza. Vemos que te ha llamado la atención <strong>{{nombre}}</strong>. A continuación, te compartimos su información a detalle.</p>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding: 10px 30px;">
+                <img src="{{foto_url}}" alt="{{nombre}}" style="width: 100%; max-width: 600px; border-radius: 8px; display: block;">
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding: 10px 30px;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fdfbf7; border-left: 4px solid #d35400; padding: 15px;">
+                    <tr>
+                        <td style="padding-bottom: 8px; font-size: 15px;"><strong>Cachorro:</strong> {{nombre}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 8px; font-size: 15px;"><strong>Sexo:</strong> {{sexo}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 8px; font-size: 15px;"><strong>Talla:</strong> {{talla}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 8px; font-size: 15px;"><strong>Color:</strong> {{color}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 8px; font-size: 15px;"><strong>Fecha de entrega:</strong> {{fecha_entrega_texto}}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-size: 15px; line-height: 1.5; padding-top: 8px; border-top: 1px solid #eeeeee;"><strong>Personalidad:</strong> {{descripcion_personalidad}}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        {{#if video_personalidad_url}}
+        <tr>
+            <td style="padding: 20px 30px;">
+                <p style="font-size: 16px; line-height: 1.6;">Conoce más sobre su comportamiento en nuestro video <strong>{{video_personalidad_titulo}}</strong> y descubre su contexto de crianza:</p>
+                <p style="text-align: center; margin: 20px 0;">
+                    <a href="{{video_personalidad_url}}" style="background-color: #d35400; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Ver Video de {{nombre}}</a>
+                </p>
+            </td>
+        </tr>
+        {{/if}}
+
+        <tr>
+            <td style="padding: 20px 30px; border-top: 1px solid #eeeeee;">
+                <h2 style="font-size: 20px; color: #2c3e50; margin-top: 0;">Inversión y Proceso de Reserva</h2>
+                <ul style="font-size: 16px; line-height: 1.6; padding-left: 20px; margin-bottom: 0;">
+                    <li><strong>Precio total:</strong> $42,000 pesos mexicanos.</li>
+                    <li><strong>Reserva inicial:</strong> $15,000 pesos.</li>
+                    <li><strong>Pagos:</strong> Parciales permitidos hasta completar el total.</li>
+                    <li><strong>Entrega:</strong> A los 3 meses de edad.</li>
+                </ul>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding: 25px 30px; background-color: #f9f9f9;">
+                <p style="font-size: 15px; line-height: 1.6; margin-top: 0;"><strong>Importante sobre visitas:</strong> Para proteger la salud y tranquilidad de nuestras camadas, no realizamos visitas físicas sin reserva previa. Sin embargo, te ofrecemos una <strong>videollamada guiada</strong> como alternativa profesional para que conozcas a {{nombre}} en tiempo real.</p>
+                
+                <p style="text-align: center; margin-top: 25px; margin-bottom: 5px;">
+                    <a href="https://calendly.com/xolos-ramirez/videollamada" style="background-color: #2c3e50; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Agendar Videollamada</a>
+                </p>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="padding: 20px; text-align: center; font-size: 12px; color: #999999; border-top: 1px solid #eeeeee;">
+                <p style="margin: 0;">Xolos Ramírez - Crianza Responsable y Premium</p>
+                <p style="margin: 5px 0 0 0;"><a href="{{perfil_url}}" style="color: #d35400; text-decoration: none;">Ver el perfil de {{nombre}} en la web</a></p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
