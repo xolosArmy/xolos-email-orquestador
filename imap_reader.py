@@ -118,14 +118,14 @@ def leer_inbox():
     try:
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
+        ssl_context.verify_mode = ssl.CERT_NONE  # Ignora self-signed
 
         mail = imaplib.IMAP4_SSL(IMAP_SERVER, 993, ssl_context=ssl_context)
         mail.login(IMAP_USER, IMAP_PASS)
         mail.select("INBOX")
 
         status, data = mail.search(None, "UNSEEN")
-        
+
         if status != "OK":
             log("Error al buscar correos.")
             mail.logout()
@@ -136,91 +136,84 @@ def leer_inbox():
             log("-> No hay correos nuevos.")
             mail.logout()
             return
-            
-        log(f"-> {len(ids_mensajes)} correos no leídos encontrados.")
 
         os.makedirs("outputs", exist_ok=True)
 
         for num_bytes in ids_mensajes:
-            num = num_bytes.decode('utf-8') 
-            
+            num = num_bytes.decode("utf-8")
+
             status, fetch_data = mail.fetch(num, "(RFC822)")
             for response_part in fetch_data:
-                if isinstance(response_part, tuple):
-                    msg = email.message_from_bytes(response_part[1])
-                    
-                    # --- CONTROL DE DUPLICADOS ---
-                    message_id = msg.get("Message-ID", f"no-id-{num}")
-                    if message_id in historial_procesados:
-                        log(f"    [!] MSG {message_id} ya procesado previamente. Saltando...")
-                        mail.store(num, '+FLAGS', '\\Seen') # Reasegurar que se marque
-                        continue
+                if not isinstance(response_part, tuple):
+                    continue
 
-                    asunto_original = decodificar_asunto(msg["Subject"])
-                    remitente_raw = msg.get("From", "")
-                    cuerpo_crudo = extraer_cuerpo(msg)
-                    correo_respuesta = remitente_raw
-                    origen_lead = "Directo"
-                    
-                    # --- INTERCEPTOR DE FORMSPREE ---
-                    if "formspree" in remitente_raw.lower() or "formspree" in asunto_original.lower():
-                        log(f"    [+] Formspree Detectado. Limpiando Lead...")
-                        origen_lead = "Formspree"
-                        nombre_remitente, email_real, cuerpo_real = parsear_formspree(cuerpo_crudo)
-                        if email_real:
-                            correo_respuesta = email_real 
-                    else:
-                        log(f"    [+] Correo Directo Detectado.")
-                        nombre_remitente = extraer_nombre(remitente_raw)
-                        cuerpo_real = cuerpo_crudo
-                        match_correo = re.search(r'<([^>]+)>', remitente_raw)
-                        if match_correo:
-                            correo_respuesta = match_correo.group(1)
-                    
-                    log(f"        De (Real): {nombre_remitente} | Email: {correo_respuesta}")
-                    
-                    # --- ORQUESTADOR ---
-                    html_respuesta = procesar_correo(asunto_original, cuerpo_real, nombre_remitente)
-                    
-                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"outputs/draft_{timestamp}.html"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write(html_respuesta)
+                msg = email.message_from_bytes(response_part[1])
 
-                    # --- INYECTAR BORRADOR ---
-                    borrador = EmailMessage()
-                    borrador["Subject"] = f"Re: {asunto_original}"
-                    borrador["From"] = IMAP_USER
-                    borrador["To"] = correo_respuesta
-                    
-                    borrador.set_content("Por favor visualiza este correo en un cliente que soporte HTML.")
-                    borrador.add_alternative(html_respuesta, subtype='html')
+                message_id = msg.get("Message-ID", f"no-id-{num}")
+                if message_id in historial_procesados:
+                    log(f"[!] MSG {message_id} ya procesado previamente. Saltando...")
+                    mail.store(num, "+FLAGS", "\\Seen")
+                    continue
 
-                    status_append, data_append = mail.append(
-                        DRAFTS_FOLDER,
-                        '\\Draft',
-                        imaplib.Time2Internaldate(time.time()),
-                        borrador.as_bytes()
-                    )
-                    
-                    if status_append == "OK":
-                        log(f"        [🚀] ¡Borrador inyectado en Mailcow exitosamente!")
-                        
-                        # Marcar el correo original como leído
-                        mail.store(num, '+FLAGS', '\\Seen')
-                        log(f"        [✔] Correo original marcado como leído.")
-                        
-                        # Guardar metadatos y actualizar historial
-                        guardar_lead_json(nombre_remitente, correo_respuesta, asunto_original, origen_lead)
-                        historial_procesados.append(message_id)
-                        guardar_historial(historial_procesados)
-                        
-                    else:
-                        log(f"        [X] Error al inyectar borrador: {status_append} | {data_append}")
-                    
+                asunto_original = decodificar_asunto(msg.get("Subject"))
+                remitente_raw = msg.get("From", "")
+                cuerpo_crudo = extraer_cuerpo(msg)
+                correo_respuesta = remitente_raw
+                origen_lead = "Directo"
+
+                if "formspree" in remitente_raw.lower() or "formspree" in asunto_original.lower():
+                    log("[+] Formspree Detectado. Limpiando Lead...")
+                    origen_lead = "Formspree"
+                    nombre_remitente, email_real, cuerpo_real = parsear_formspree(cuerpo_crudo)
+                    if email_real:
+                        correo_respuesta = email_real
+                else:
+                    log("[+] Correo Directo Detectado.")
+                    nombre_remitente = extraer_nombre(remitente_raw)
+                    cuerpo_real = cuerpo_crudo
+                    match_correo = re.search(r"<([^>]+)>", remitente_raw)
+                    if match_correo:
+                        correo_respuesta = match_correo.group(1)
+
+                log(f"De (Real): {nombre_remitente} | Email: {correo_respuesta}")
+
+                html_respuesta = procesar_correo(asunto_original, cuerpo_real, nombre_remitente)
+
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", message_id)[:40]
+                filename = f"outputs/draft_{timestamp}_{safe_id}.html"
+
+                with open(filename, "w", encoding="utf-8") as f:
+                    f.write(html_respuesta)
+
+                borrador = EmailMessage()
+                borrador["Subject"] = f"Re: {asunto_original}"
+                borrador["From"] = IMAP_USER
+                borrador["To"] = correo_respuesta
+                borrador.set_content("Por favor visualiza este correo en un cliente que soporte HTML.")
+                borrador.add_alternative(html_respuesta, subtype="html")
+
+                status_append, data_append = mail.append(
+                    DRAFTS_FOLDER,
+                    "\\Draft",
+                    imaplib.Time2Internaldate(time.time()),
+                    borrador.as_bytes()
+                )
+
+                if status_append == "OK":
+                    log("[🚀] ¡Borrador inyectado en Mailcow exitosamente!")
+                    mail.store(num, "+FLAGS", "\\Seen")
+                    log("[✔] Correo original marcado como leído.")
+
+                    guardar_lead_json(nombre_remitente, correo_respuesta, asunto_original, origen_lead)
+                    historial_procesados.append(message_id)
+                    guardar_historial(historial_procesados)
+                else:
+                    log(f"[X] Error al inyectar borrador: {status_append} | {data_append}")
+
         mail.logout()
-        log("Ciclo finalizado con éxito.\n" + "-"*40)
-        
+        log("Ciclo finalizado con éxito.")
+
     except socket.timeout:
         log("[!] ERROR: Timeout de socket al intentar conectar por IMAP. El servidor no respondió en 15 segundos.")
     except Exception as e:
