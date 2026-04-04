@@ -1,4 +1,5 @@
 import imaplib
+import smtplib
 import email
 from email.header import decode_header
 from email.message import EmailMessage
@@ -9,17 +10,17 @@ import re
 import time
 import socket
 import json
-from render_email import procesar_correo
+from render_email import procesar_correo, detectar_intencion, detectar_cachorro, cargar_cachorros
 
-# 1. TIMEOUT GLOBAL PARA EVITAR CUELGUES
+# 1. TIMEOUT GLOBAL Y CONFIGURACION
 socket.setdefaulttimeout(15)
 
-# ==========================================
-# CONFIGURACIÓN 
-# ==========================================
 IMAP_SERVER = os.environ.get("XOLOS_IMAP_SERVER", "mail.xolosramirez.com")
 IMAP_USER = os.environ.get("XOLOS_IMAP_USER", "fernando@xolosramirez.com")
 IMAP_PASS = os.environ.get("XOLOS_IMAP_PASS", "")
+
+# MODO_AUTO: "ON" para enviar correos seguros, "OFF" para que todo sea Draft
+MODO_AUTO = os.environ.get("XOLOS_MODO_AUTO", "OFF")
 
 DRAFTS_FOLDER = "Drafts"
 HISTORY_FILE = "processed_history.json"
@@ -28,196 +29,210 @@ HISTORY_FILE = "processed_history.json"
 # UTILIDADES DE SOPORTE
 # ==========================================
 def log(mensaje):
-    """Imprime mensajes con timestamp para un cron.log limpio"""
     hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{hora}] {mensaje}")
 
+
 def cargar_historial():
     if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, 'r') as f:
-            return json.load(f)
+        with open(HISTORY_FILE, "r") as f:
+            try:
+                return json.load(f)
+            except Exception:
+                return []
     return []
 
+
 def guardar_historial(historial):
-    with open(HISTORY_FILE, 'w') as f:
+    with open(HISTORY_FILE, "w") as f:
         json.dump(historial, f)
 
-def guardar_lead_json(nombre, email_cliente, asunto, origen):
+
+def guardar_lead_json(nombre, email_cliente, asunto, origen, estrategia):
     os.makedirs("leads", exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     lead_data = {
-        "fecha_registro": timestamp,
+        "fecha": timestamp,
         "nombre": nombre,
         "email": email_cliente,
-        "asunto_original": asunto,
-        "origen": origen
+        "asunto": asunto,
+        "origen": origen,
+        "accion_tomada": estrategia,
     }
-    with open(f"leads/lead_{timestamp}.json", 'w', encoding='utf-8') as f:
+    with open(f"leads/lead_{timestamp}.json", "w", encoding="utf-8") as f:
         json.dump(lead_data, f, ensure_ascii=False, indent=4)
 
+
+# ==========================================
+# MOTOR DE ENVIO REAL (SMTP)
+# ==========================================
+def enviar_correo_real(destinatario, asunto, html_cuerpo):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = asunto
+        msg["From"] = f"Xolos Ramirez <{IMAP_USER}>"
+        msg["To"] = destinatario
+        msg.set_content("Por favor visualiza este correo en un cliente que soporte HTML.")
+        msg.add_alternative(html_cuerpo, subtype="html")
+
+        # Usamos el puerto 587 con STARTTLS
+        with smtplib.SMTP(IMAP_SERVER, 587, timeout=15) as server:
+            server.starttls()
+            server.login(IMAP_USER, IMAP_PASS)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        log(f"    [X] Error critico en envio SMTP: {e}")
+        return False
+
+
+# ==========================================
+# CLASIFICADOR DE CONFIANZA
+# ==========================================
+def decidir_estrategia(intencion, cachorro, nombre_cliente, email_cliente):
+    """
+    Determina si el lead es seguro para responder automaticamente.
+    """
+    if MODO_AUTO != "ON":
+        return "REVIEW"
+
+    if not email_cliente or "@" not in email_cliente:
+        return "REVIEW"
+
+    # 1. Casos de alta confianza (Auto-envio)
+    if intencion in ["precio", "llamada"]:
+        return "SAFE"
+
+    if cachorro and nombre_cliente != "Amigo(a)":
+        return "SAFE"
+
+    # 2. Casos que requieren ojo humano
+    return "REVIEW"
+
+
+# ==========================================
+# PARSEO Y EXTRACCION
+# ==========================================
 def decodificar_asunto(header_value):
-    if not header_value: return "Sin Asunto"
+    if not header_value:
+        return "Sin Asunto"
     decoded_bytes, charset = decode_header(header_value)[0]
     if charset:
         return decoded_bytes.decode(charset)
-    elif isinstance(decoded_bytes, bytes):
-        return decoded_bytes.decode('utf-8', errors='ignore')
     return str(decoded_bytes)
 
+
 def extraer_cuerpo(msg):
-    cuerpo = ""
     if msg.is_multipart():
         for part in msg.walk():
-            content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
-            if content_type == "text/plain" and "attachment" not in content_disposition:
-                cuerpo = part.get_payload(decode=True).decode('utf-8', errors='ignore')
-                break
-    else:
-        cuerpo = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
-    return cuerpo
+            if part.get_content_type() == "text/plain":
+                return part.get_payload(decode=True).decode("utf-8", errors="ignore")
+    return msg.get_payload(decode=True).decode("utf-8", errors="ignore")
 
-def extraer_nombre(remitente_raw):
-    if remitente_raw and '<' in remitente_raw:
-        nombre = remitente_raw.split('<')[0].strip().replace('"', '')
-        if nombre: 
-            return nombre
-    return "Amigo(a)"
 
 def parsear_formspree(cuerpo_crudo):
-    nombre_real = "Amigo(a)"
-    email_real = ""
-    mensaje_real = cuerpo_crudo
-
-    match_nombre = re.search(r'(?im)^(?:nombre|name)\s*:\s*(.+)$', cuerpo_crudo)
+    nombre = "Amigo(a)"
+    email_dest = ""
+    match_nombre = re.search(r"(?im)^(?:nombre|name)\s*:\s*(.+)$", cuerpo_crudo)
     if match_nombre:
-        nombre_real = match_nombre.group(1).strip()
-
-    match_email = re.search(r'(?im)^(?:correo|email|e-mail)\s*:\s*(.+)$', cuerpo_crudo)
+        nombre = match_nombre.group(1).strip()
+    match_email = re.search(r"(?im)^(?:correo|email|e-mail)\s*:\s*(.+)$", cuerpo_crudo)
     if match_email:
-        email_real = match_email.group(1).strip()
+        email_dest = match_email.group(1).strip()
+    return nombre, email_dest
 
-    match_mensaje = re.search(r'(?is)(?:^|\n)(?:mensaje|message)\s*:\s*(.+)', cuerpo_crudo)
-    if match_mensaje:
-        mensaje_real = match_mensaje.group(1).strip()
-
-    return nombre_real, email_real, mensaje_real
 
 # ==========================================
-# BUCLE PRINCIPAL
+# PROCESO PRINCIPAL
 # ==========================================
 def leer_inbox():
-    log(f"Iniciando ciclo. Conectando a {IMAP_SERVER}...")
-
+    log(f"Iniciando ciclo (Modo Auto: {MODO_AUTO}). Conectando...")
     if not IMAP_PASS:
-        log("ERROR CRÍTICO: La variable de entorno XOLOS_IMAP_PASS no está configurada.")
+        log("ERROR: Contraseña IMAP no configurada.")
         return
 
-    historial_procesados = cargar_historial()
+    historial = cargar_historial()
+    cachorros_db = cargar_cachorros("cachorros.json")
 
     try:
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE  # Ignora self-signed
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
 
-        mail = imaplib.IMAP4_SSL(IMAP_SERVER, 993, ssl_context=ssl_context)
+        mail = imaplib.IMAP4_SSL(IMAP_SERVER, 993, ssl_context=ctx)
         mail.login(IMAP_USER, IMAP_PASS)
         mail.select("INBOX")
 
         status, data = mail.search(None, "UNSEEN")
-
-        if status != "OK":
-            log("Error al buscar correos.")
-            mail.logout()
-            return
-
-        ids_mensajes = data[0].split()
-        if not ids_mensajes:
+        ids = data[0].split()
+        if not ids:
             log("-> No hay correos nuevos.")
             mail.logout()
             return
 
-        os.makedirs("outputs", exist_ok=True)
-
-        for num_bytes in ids_mensajes:
+        for num_bytes in ids:
             num = num_bytes.decode("utf-8")
+            _, fetch_data = mail.fetch(num, "(RFC822)")
+            msg = email.message_from_bytes(fetch_data[0][1])
 
-            status, fetch_data = mail.fetch(num, "(RFC822)")
-            for response_part in fetch_data:
-                if not isinstance(response_part, tuple):
-                    continue
+            msg_id = msg.get("Message-ID", f"no-id-{num}")
+            if msg_id in historial:
+                mail.store(num, "+FLAGS", "\\Seen")
+                continue
 
-                msg = email.message_from_bytes(response_part[1])
+            asunto = decodificar_asunto(msg["Subject"])
+            remitente_raw = msg.get("From", "")
+            cuerpo = extraer_cuerpo(msg)
 
-                message_id = msg.get("Message-ID", f"no-id-{num}")
-                if message_id in historial_procesados:
-                    log(f"[!] MSG {message_id} ya procesado previamente. Saltando...")
+            # Detectar origen y limpiar datos
+            es_formspree = "formspree" in remitente_raw.lower() or "formspree" in asunto.lower()
+            if es_formspree:
+                nombre, email_cliente = parsear_formspree(cuerpo)
+                origen = "Formspree"
+            else:
+                nombre = remitente_raw.split("<")[0].strip().replace('"', "") or "Amigo(a)"
+                email_cliente = re.search(r"<([^>]+)>", remitente_raw).group(1) if "<" in remitente_raw else remitente_raw
+                origen = "Directo"
+
+            # Inteligencia de respuesta
+            texto_analisis = f"{asunto} {cuerpo}"
+            intencion = detectar_intencion(texto_analisis)
+            cachorro = detectar_cachorro(texto_analisis, cachorros_db)
+            html_res = procesar_correo(asunto, cuerpo, nombre)
+
+            # Decidir Estrategia
+            estrategia = decidir_estrategia(intencion, cachorro, nombre, email_cliente)
+
+            if estrategia == "SAFE":
+                log(f"    [AUTO] AUTO-ENVIO a: {email_cliente} (Intencion: {intencion})")
+                if enviar_correo_real(email_cliente, f"Re: {asunto}", html_res):
                     mail.store(num, "+FLAGS", "\\Seen")
-                    continue
-
-                asunto_original = decodificar_asunto(msg.get("Subject"))
-                remitente_raw = msg.get("From", "")
-                cuerpo_crudo = extraer_cuerpo(msg)
-                correo_respuesta = remitente_raw
-                origen_lead = "Directo"
-
-                if "formspree" in remitente_raw.lower() or "formspree" in asunto_original.lower():
-                    log("[+] Formspree Detectado. Limpiando Lead...")
-                    origen_lead = "Formspree"
-                    nombre_remitente, email_real, cuerpo_real = parsear_formspree(cuerpo_crudo)
-                    if email_real:
-                        correo_respuesta = email_real
+                    log("        [OK] Enviado exitosamente.")
                 else:
-                    log("[+] Correo Directo Detectado.")
-                    nombre_remitente = extraer_nombre(remitente_raw)
-                    cuerpo_real = cuerpo_crudo
-                    match_correo = re.search(r"<([^>]+)>", remitente_raw)
-                    if match_correo:
-                        correo_respuesta = match_correo.group(1)
+                    estrategia = "REVIEW"  # Fallback si falla SMTP
 
-                log(f"De (Real): {nombre_remitente} | Email: {correo_respuesta}")
-
-                html_respuesta = procesar_correo(asunto_original, cuerpo_real, nombre_remitente)
-
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", message_id)[:40]
-                filename = f"outputs/draft_{timestamp}_{safe_id}.html"
-
-                with open(filename, "w", encoding="utf-8") as f:
-                    f.write(html_respuesta)
-
+            if estrategia == "REVIEW":
+                log(f"    [DRAFT] DRAFT para: {email_cliente} (Revision requerida)")
                 borrador = EmailMessage()
-                borrador["Subject"] = f"Re: {asunto_original}"
+                borrador["Subject"] = f"Re: {asunto}"
                 borrador["From"] = IMAP_USER
-                borrador["To"] = correo_respuesta
-                borrador.set_content("Por favor visualiza este correo en un cliente que soporte HTML.")
-                borrador.add_alternative(html_respuesta, subtype="html")
+                borrador["To"] = email_cliente
+                borrador.add_alternative(html_res, subtype="html")
 
-                status_append, data_append = mail.append(
-                    DRAFTS_FOLDER,
-                    "\\Draft",
-                    imaplib.Time2Internaldate(time.time()),
-                    borrador.as_bytes()
-                )
+                mail.append(DRAFTS_FOLDER, "\\Draft", imaplib.Time2Internaldate(time.time()), borrador.as_bytes())
+                mail.store(num, "+FLAGS", "\\Seen")
+                log("        [OK] Borrador creado.")
 
-                if status_append == "OK":
-                    log("[🚀] ¡Borrador inyectado en Mailcow exitosamente!")
-                    mail.store(num, "+FLAGS", "\\Seen")
-                    log("[✔] Correo original marcado como leído.")
-
-                    guardar_lead_json(nombre_remitente, correo_respuesta, asunto_original, origen_lead)
-                    historial_procesados.append(message_id)
-                    guardar_historial(historial_procesados)
-                else:
-                    log(f"[X] Error al inyectar borrador: {status_append} | {data_append}")
+            guardar_lead_json(nombre, email_cliente, asunto, origen, estrategia)
+            historial.append(msg_id)
+            guardar_historial(historial)
 
         mail.logout()
-        log("Ciclo finalizado con éxito.")
+        log("Ciclo finalizado.")
 
-    except socket.timeout:
-        log("[!] ERROR: Timeout de socket al intentar conectar por IMAP. El servidor no respondió en 15 segundos.")
     except Exception as e:
-        log(f"[!] ERROR conectando por IMAP: {type(e).__name__}: {e}")
+        log(f"ERROR: {e}")
+
 
 if __name__ == "__main__":
     leer_inbox()
