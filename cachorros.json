@@ -4,6 +4,7 @@
       "slug": "tonatiuh",
       "nombre": "Tonatiuh Ramirez",
       "estado": "disponible",
+      "teyolia": true,
       "fecha_nacimiento": "2025-10-25",
       "fecha_entrega": "2026-01-25",
       "entrega_modo": "inmediata",
@@ -16,7 +17,7 @@
       "video_personalidad_url": "https://www.youtube.com/watch?v=mwlofFThWwA",
       "video_personalidad_titulo": "Tonatiuh | Personalidad Xolo",
       "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#tonatiuh",
-      "notas_internas": "Cachorro de 5 meses, listo para entrega inmediata."
+      "notas_internas": "Candidato a Teyolía por edad. 7 meses."
     },
     {
       "slug": "ozomatli",
@@ -30,11 +31,10 @@
       "color": "Negro",
       "sexo": "Macho",
       "descripcion_personalidad": "Ozomatli es un cachorro con presencia elegante, atento a su entorno y con una energía equilibrada.",
-      "foto_url": "https://i.imgur.com/e4z2vS9.jpeg",
-      "video_personalidad_url": "https://youtube.com/shorts/V0Z_qj4GMsY",
+      "foto_url": "https://i.imgur.com/artsE6a.jpeg",
+      "video_personalidad_url": "https://youtube.com/embed/w9b_UIjRZiw",
       "video_personalidad_titulo": "Ozomatli | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#ozomatli",
-      "notas_internas": "Lead frecuente. Buen candidato para respuesta visual premium."
+      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#ozomatli"
     },
     {
       "slug": "nox",
@@ -48,11 +48,10 @@
       "color": "Negro",
       "sexo": "Macho",
       "descripcion_personalidad": "Nox tiene un porte fuerte y protector. Es un Xoloitzcuintle estándar muy observador, con el temperamento clásico de un guardián silencioso.",
-      "foto_url": "https://i.imgur.com/ChnKp7O.jpeg",
-      "video_personalidad_url": "https://youtube.com/shorts/V0Z_qj4GMsY",
+      "foto_url": "https://i.imgur.com/lfCp7zG.jpeg",
+      "video_personalidad_url": "https://youtube.com/embed/BmeHIF8FKTM",
       "video_personalidad_titulo": "Nox | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#nox",
-      "notas_internas": "Fecha provisional hasta confirmar si comparte fecha exacta con Ozomatli."
+      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#nox"
     },
     {
       "slug": "teyolia",
@@ -65,66 +64,55 @@
       "talla": "Miniatura",
       "color": "Negro",
       "sexo": "Hembra",
-      "descripcion_personalidad": "Teyolia transmite dulzura y curiosidad, con una presencia muy cercana y expresiva.",
-      "foto_url": "https://i.imgur.com/pkkgjsh.jpeg",
-      "video_personalidad_url": "https://www.youtube.com/shorts/cAfWi5e2Xx8",
+      "descripcion_personalidad": "Teyolia transmite dulzura y curiosidad, con una presencia muy cercana y expresiva. Tamaño miniatura exclusivo.",
+      "foto_url": "https://i.imgur.com/EKqVQjW.jpeg",
+      "video_personalidad_url": "https://youtube.com/embed/hoGIjmK40iI",
       "video_personalidad_titulo": "Teyolia | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#teyolia",
-      "notas_internas": "Cachorro más joven. Incluir fecha de entrega en toda respuesta."
+      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#teyolia"
     },
     {
       "slug": "onix",
       "nombre": "Ónix Ramirez",
-      "estado": "disponible",
-      "fecha_nacimiento": "2026-04-19",
-      "fecha_entrega": "2026-07-19",
-      "entrega_modo": "programada",
-      "fecha_entrega_texto": "19 de julio de 2026",
+      "estado": "reservado",
+      "reserva_cliente": "Adrián Castellanos",
       "talla": "Intermedia",
       "color": "Negro",
       "sexo": "Macho",
-      "descripcion_personalidad": "Ónix es un cachorro recién nacido, en etapa de crecimiento y cuidados maternos. Pronto mostrará su temperamento.",
-      "foto_url": "https://i.imgur.com/xYNbvRL.jpeg",
-      "video_personalidad_url": "https://www.youtube.com/watch?v=yp0tAIOjBlA",
-      "video_personalidad_titulo": "Ónix | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#onix",
-      "notas_internas": "Recién nacido. Fecha de entrega estimada a los 3 meses."
+      "descripcion_personalidad": "Ónix se encuentra reservado.",
+      "foto_url": "https://i.imgur.com/oNhYWOr.jpeg"
     },
     {
-      "slug": "luna",
-      "nombre": "Luna Ramirez",
-      "estado": "disponible",
-      "fecha_nacimiento": "2026-04-19",
-      "fecha_entrega": "2026-07-19",
-      "entrega_modo": "programada",
-      "fecha_entrega_texto": "19 de julio de 2026",
-      "talla": "Intermedia",
-      "color": "Negro",
+      "slug": "chimalma",
+      "nombre": "Chimalma Ramirez",
+      "estado": "reservado",
+      "reserva_cliente": "Esmeralda Padilla",
+      "talla": "No especificada",
+      "color": "Bermejo con copete blanco",
       "sexo": "Hembra",
-      "descripcion_personalidad": "Luna es una cachorra recién nacida, en etapa de crecimiento y cuidados maternos. Pronto mostrará su temperamento.",
-      "foto_url": "https://i.imgur.com/YVroHIG.jpeg",
-      "video_personalidad_url": "https://www.youtube.com/watch?v=5OvYnLW7aGE",
-      "video_personalidad_titulo": "Luna | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#luna",
-      "notas_internas": "Recién nacida. Fecha de entrega estimada a los 3 meses."
+      "descripcion_personalidad": "Chimalma se encuentra reservada.",
+      "foto_url": "https://i.imgur.com/nC7DWHD.jpeg"
     },
     {
       "slug": "mixa",
       "nombre": "Mixa Ramirez",
-      "estado": "disponible",
-      "fecha_nacimiento": "2026-04-19",
-      "fecha_entrega": "2026-07-19",
-      "entrega_modo": "programada",
-      "fecha_entrega_texto": "19 de julio de 2026",
+      "estado": "reservado",
+      "reserva_cliente": "Alejandro Garibotti",
       "talla": "Intermedia",
       "color": "Mariposa",
       "sexo": "Hembra",
-      "descripcion_personalidad": "Mixa es una cachorra recién nacida con un hermoso patrón mariposa, en etapa de crecimiento y cuidados maternos.",
-      "foto_url": "https://i.imgur.com/q9iTPZj.jpeg",
-      "video_personalidad_url": "https://www.youtube.com/watch?v=kqcFJzHJZEU",
-      "video_personalidad_titulo": "Mixa | Personalidad Xolo",
-      "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#mixa",
-      "notas_internas": "Recién nacida. Fecha de entrega estimada a los 3 meses. Patrón de color mariposa."
+      "descripcion_personalidad": "Mixa se encuentra reservada.",
+      "foto_url": "https://i.imgur.com/QigN5j6.jpeg"
+    },
+    {
+      "slug": "luna",
+      "nombre": "Luna Ramirez",
+      "estado": "reservado",
+      "reserva_cliente": "Eduardo Téllez",
+      "talla": "Intermedia",
+      "color": "Negro",
+      "sexo": "Hembra",
+      "descripcion_personalidad": "Luna se encuentra reservada.",
+      "foto_url": "https://i.imgur.com/Fra9IT7.jpeg"
     }
   ]
 }
