@@ -109,6 +109,22 @@ def render_template_cachorro(cachorro, nombre_cliente, path_template, idioma="es
             flags=re.DOTALL,
         )
 
+    # Manejo de videollamada condicional (Google Meet)
+    if cachorro_render.get("videollamada_url"):
+        html = re.sub(
+            r"\{\{#if videollamada_url\}\}(.*?)\{\{/if\}\}",
+            r"\1",
+            html,
+            flags=re.DOTALL,
+        )
+    else:
+        html = re.sub(
+            r"\{\{#if videollamada_url\}\}.*?\{\{/if\}\}",
+            "",
+            html,
+            flags=re.DOTALL,
+        )
+
     html = html.replace("{{nombre_cliente}}", nombre_cliente)
 
     for key, value in cachorro_render.items():
