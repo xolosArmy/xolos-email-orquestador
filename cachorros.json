@@ -14,7 +14,7 @@
       "sexo": "Macho",
       "descripcion_personalidad": "Tonatiuh es un cachorro miniatura sumamente inteligente y apegado. Ideal para espacios interiores y familias que buscan un compañero leal y alerta.",
       "foto_url": "https://i.imgur.com/uRMgiE2.png",
-      "video_personalidad_url": "https://www.youtube.com/watch?v=mwlofFThWwA",
+      "video_personalidad_url": "https://www.youtube.com/embed/Ud7-0MpCDE0",
       "video_personalidad_titulo": "Tonatiuh | Personalidad Xolo",
       "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#tonatiuh",
       "notas_internas": "Candidato a Teyolía por edad. 7 meses.",
@@ -23,7 +23,8 @@
     {
       "slug": "ozomatli",
       "nombre": "Ozomatli Ramirez",
-      "estado": "disponible",
+      "estado": "reservado",
+      "reserva_cliente": "Fernando",
       "fecha_nacimiento": "2026-01-18",
       "fecha_entrega": "2026-04-18",
       "entrega_modo": "programada",
@@ -33,7 +34,7 @@
       "sexo": "Macho",
       "descripcion_personalidad": "Ozomatli es un cachorro con presencia elegante, atento a su entorno y con una energía equilibrada.",
       "foto_url": "https://i.imgur.com/artsE6a.jpeg",
-      "video_personalidad_url": "https://youtube.com/embed/w9b_UIjRZiw",
+      "video_personalidad_url": "https://www.youtube.com/embed/BmeHIF8FKTM",
       "video_personalidad_titulo": "Ozomatli | Personalidad Xolo",
       "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#ozomatli",
       "videollamada_url": "https://calendar.app.google/1PXNvJM42iZ3JMHC8"
@@ -50,8 +51,8 @@
       "color": "Negro",
       "sexo": "Macho",
       "descripcion_personalidad": "Nox tiene un porte fuerte y protector. Es un Xoloitzcuintle estándar muy observador, con el temperamento clásico de un guardián silencioso.",
-      "foto_url": "https://i.imgur.com/lfCp7zG.jpeg",
-      "video_personalidad_url": "https://youtube.com/embed/BmeHIF8FKTM",
+      "foto_url": "https://i.imgur.com/jLNvtQk.jpeg",
+      "video_personalidad_url": "https://www.youtube.com/embed/YkpF5WeRydo",
       "video_personalidad_titulo": "Nox | Personalidad Xolo",
       "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#nox",
       "videollamada_url": "https://calendar.app.google/1PXNvJM42iZ3JMHC8"
@@ -68,8 +69,8 @@
       "color": "Negro",
       "sexo": "Hembra",
       "descripcion_personalidad": "Teyolia transmite dulzura y curiosidad, con una presencia muy cercana y expresiva. Tamaño miniatura exclusivo.",
-      "foto_url": "https://i.imgur.com/EKqVQjW.jpeg",
-      "video_personalidad_url": "https://youtube.com/embed/hoGIjmK40iI",
+      "foto_url": "https://i.imgur.com/SywxStU.jpeg",
+      "video_personalidad_url": "https://www.youtube.com/embed/Y6m1tm2dv-A",
       "video_personalidad_titulo": "Teyolia | Personalidad Xolo",
       "perfil_url": "https://www.xolosramirez.com/xolos-disponibles.html#teyolia",
       "videollamada_url": "https://calendar.app.google/1PXNvJM42iZ3JMHC8"
@@ -83,7 +84,9 @@
       "color": "Negro",
       "sexo": "Macho",
       "descripcion_personalidad": "Ónix se encuentra reservado.",
-      "foto_url": "https://i.imgur.com/oNhYWOr.jpeg"
+      "foto_url": "https://i.imgur.com/oNhYWOr.jpeg",
+      "video_personalidad_url": "https://www.youtube.com/embed/_2EGfG77VhE",
+      "video_personalidad_titulo": "Ónix | Personalidad Xolo"
     },
     {
       "slug": "chimalma",
@@ -94,7 +97,9 @@
       "color": "Bermejo con copete blanco",
       "sexo": "Hembra",
       "descripcion_personalidad": "Chimalma se encuentra reservada.",
-      "foto_url": "https://i.imgur.com/nC7DWHD.jpeg"
+      "foto_url": "https://i.imgur.com/nC7DWHD.jpeg",
+      "video_personalidad_url": "https://www.youtube.com/embed/0qcQvELxVpU",
+      "video_personalidad_titulo": "Chimalma | Personalidad Xolo"
     },
     {
       "slug": "mixa",
@@ -105,7 +110,9 @@
       "color": "Mariposa",
       "sexo": "Hembra",
       "descripcion_personalidad": "Mixa se encuentra reservada.",
-      "foto_url": "https://i.imgur.com/QigN5j6.jpeg"
+      "foto_url": "https://i.imgur.com/QigN5j6.jpeg",
+      "video_personalidad_url": "https://www.youtube.com/embed/swT_Xkc7Kco",
+      "video_personalidad_titulo": "Mixa | Personalidad Xolo"
     },
     {
       "slug": "luna",
