@@ -69,6 +69,11 @@ def render_template_cachorro(cachorro, nombre_cliente, path_template, idioma="es
         html = "<p>Hola {{nombre_cliente}}, enviando información de {{nombre}}.</p>"
 
     cachorro_render = cachorro.copy()
+    estado = str(cachorro_render.get("estado", "")).lower()
+    cachorro_render["esta_disponible"] = estado == "disponible"
+    cachorro_render["esta_reservado"] = estado == "reservado"
+    cachorro_render.setdefault("precio_texto", "$42,000 pesos mexicanos")
+    cachorro_render.setdefault("reserva_texto", "$15,000 pesos")
 
     # Inyección dinámica para el programa Teyolías
     if cachorro_render.get("teyolia"):
@@ -93,37 +98,22 @@ def render_template_cachorro(cachorro, nombre_cliente, path_template, idioma="es
             cachorro_render.get("descripcion_personalidad", "") + aviso_teyolia
         )
 
-    # Manejo de video condicional
-    if cachorro_render.get("video_personalidad_url"):
-        html = re.sub(
-            r"\{\{#if video_personalidad_url\}\}(.*?)\{\{/if\}\}",
-            r"\1",
-            html,
-            flags=re.DOTALL,
-        )
-    else:
-        html = re.sub(
-            r"\{\{#if video_personalidad_url\}\}.*?\{\{/if\}\}",
-            "",
-            html,
-            flags=re.DOTALL,
-        )
-
-    # Manejo de videollamada condicional (Google Meet)
-    if cachorro_render.get("videollamada_url"):
-        html = re.sub(
-            r"\{\{#if videollamada_url\}\}(.*?)\{\{/if\}\}",
-            r"\1",
-            html,
-            flags=re.DOTALL,
-        )
-    else:
-        html = re.sub(
-            r"\{\{#if videollamada_url\}\}.*?\{\{/if\}\}",
-            "",
-            html,
-            flags=re.DOTALL,
-        )
+    # Manejo de bloques condicionales simples del template.
+    for key in ("video_personalidad_url", "videollamada_url", "esta_disponible", "esta_reservado"):
+        if cachorro_render.get(key):
+            html = re.sub(
+                rf"\{{\{{#if {key}\}}\}}(.*?)\{{\{{/if\}}\}}",
+                r"\1",
+                html,
+                flags=re.DOTALL,
+            )
+        else:
+            html = re.sub(
+                rf"\{{\{{#if {key}\}}\}}.*?\{{\{{/if\}}\}}",
+                "",
+                html,
+                flags=re.DOTALL,
+            )
 
     html = html.replace("{{nombre_cliente}}", nombre_cliente)
 

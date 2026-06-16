@@ -62,21 +62,36 @@
         </tr>
         {{/if}}
 
+        {{#if esta_disponible}}
         <tr>
             <td style="padding: 20px 30px; border-top: 1px solid #eeeeee;">
                 <h2 style="font-size: 20px; color: #2c3e50; margin-top: 0;">Inversión y Proceso de Reserva</h2>
                 <ul style="font-size: 16px; line-height: 1.6; padding-left: 20px; margin-bottom: 0;">
-                    <li><strong>Precio total:</strong> $42,000 pesos mexicanos.</li>
-                    <li><strong>Reserva inicial:</strong> $15,000 pesos.</li>
+                    <li><strong>Precio total:</strong> {{precio_texto}}.</li>
+                    <li><strong>Reserva inicial:</strong> {{reserva_texto}}.</li>
                     <li><strong>Pagos:</strong> Parciales permitidos hasta completar el total.</li>
                     <li><strong>Entrega:</strong> A los 3 meses de edad.</li>
                 </ul>
 
                 <p style="text-align: center; margin-top: 30px; margin-bottom: 5px;">
-                    <a href="https://wa.me/qr/LNO2OMMH2ZKWF1" style="background-color: #25D366; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">💬 Reservar a {{nombre}} por WhatsApp</a>
+                    <a href="https://wa.me/qr/R2F5PRQYZSJOA1" style="background-color: #25D366; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">💬 Reservar a {{nombre}} por WhatsApp</a>
                 </p>
             </td>
         </tr>
+        {{/if}}
+
+        {{#if esta_reservado}}
+        <tr>
+            <td style="padding: 20px 30px; border-top: 1px solid #eeeeee;">
+                <h2 style="font-size: 20px; color: #2c3e50; margin-top: 0;">Disponibilidad actual</h2>
+                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 0;">Este xoloitzcuintle aparece como reservado actualmente, pero podemos mostrarte opciones disponibles similares.</p>
+
+                <p style="text-align: center; margin-top: 30px; margin-bottom: 5px;">
+                    <a href="https://www.xolosramirez.com/xolos-disponibles.html" style="background-color: #d35400; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">Ver opciones disponibles</a>
+                </p>
+            </td>
+        </tr>
+        {{/if}}
 
         {{#if videollamada_url}}
         <tr>
