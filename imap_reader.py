@@ -10,14 +10,28 @@ import re
 import time
 import socket
 import json
+import errno
 from render_email import procesar_correo, detectar_intencion, detectar_cachorro, cargar_cachorros
 
 # 1. TIMEOUT GLOBAL Y CONFIGURACION
-socket.setdefaulttimeout(15)
+SOCKET_TIMEOUT = 15
+socket.setdefaulttimeout(SOCKET_TIMEOUT)
 
-IMAP_SERVER = os.environ.get("XOLOS_IMAP_SERVER", "mail.xolosramirez.com")
-IMAP_USER = os.environ.get("XOLOS_IMAP_USER", "fernando@xolosramirez.com")
+DEFAULT_IMAP_SERVER = "mail.xolosramirez.com"
+DEFAULT_IMAP_PORT = "993"
+DEFAULT_IMAP_USER = "fernando@xolosramirez.com"
+DEFAULT_SMTP_PORT = "587"
+FALLO_TCP_MENSAJE = (
+    "Fallo de conectividad TCP hacia IMAP/SMTP. DNS resuelve, pero el puerto no responde. "
+    "Revisar firewall, proveedor o host configurado."
+)
+
+IMAP_SERVER = os.environ.get("XOLOS_IMAP_SERVER", DEFAULT_IMAP_SERVER)
+IMAP_PORT = int(os.environ.get("XOLOS_IMAP_PORT", DEFAULT_IMAP_PORT))
+IMAP_USER = os.environ.get("XOLOS_IMAP_USER", DEFAULT_IMAP_USER)
 IMAP_PASS = os.environ.get("XOLOS_IMAP_PASS", "")
+SMTP_SERVER = os.environ.get("XOLOS_SMTP_SERVER", IMAP_SERVER)
+SMTP_PORT = int(os.environ.get("XOLOS_SMTP_PORT", DEFAULT_SMTP_PORT))
 
 # MODO_AUTO: "ON" para enviar correos seguros, "OFF" para que todo sea Draft
 MODO_AUTO = os.environ.get("XOLOS_MODO_AUTO", "OFF")
@@ -31,6 +45,73 @@ HISTORY_FILE = "processed_history.json"
 def log(mensaje):
     hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{hora}] {mensaje}")
+
+
+def detalle_error(exc):
+    return f"{type(exc).__name__}: {exc}"
+
+
+class FalloConectividadTCP(ConnectionError):
+    pass
+
+
+def es_fallo_tcp(exc):
+    codigos_tcp = {
+        errno.ECONNREFUSED,
+        errno.EHOSTUNREACH,
+        errno.ENETUNREACH,
+        errno.ETIMEDOUT,
+    }
+    return isinstance(exc, (socket.timeout, TimeoutError)) or getattr(exc, "errno", None) in codigos_tcp
+
+
+def log_fallo_tcp(servicio, host, puerto, exc):
+    if es_fallo_tcp(exc):
+        log(f"{FALLO_TCP_MENSAJE} Servicio={servicio} host={host} puerto={puerto}.")
+
+
+def log_error_servicio(servicio, etapa, host, puerto, exc):
+    log(f"ERROR {servicio} en etapa '{etapa}' ({host}:{puerto}): {detalle_error(exc)}")
+
+
+def resolver_host(servicio, host, puerto):
+    etapa = "resolucion DNS"
+    log(f"Resolviendo host {servicio}: {host}:{puerto}...")
+    try:
+        direcciones = socket.getaddrinfo(host, puerto, type=socket.SOCK_STREAM)
+        ips = sorted({item[4][0] for item in direcciones})
+        log(f"[OK] DNS {servicio}: {host} -> {', '.join(ips)}")
+        return direcciones
+    except socket.gaierror as exc:
+        log_error_servicio(servicio, etapa, host, puerto, exc)
+        raise
+    except OSError as exc:
+        log_error_servicio(servicio, etapa, host, puerto, exc)
+        raise
+
+
+def log_configuracion():
+    imap_server_origen = "env XOLOS_IMAP_SERVER" if "XOLOS_IMAP_SERVER" in os.environ else f"default {DEFAULT_IMAP_SERVER}"
+    imap_port_origen = "env XOLOS_IMAP_PORT" if "XOLOS_IMAP_PORT" in os.environ else f"default {DEFAULT_IMAP_PORT}"
+    imap_user_origen = "env XOLOS_IMAP_USER" if "XOLOS_IMAP_USER" in os.environ else f"default {DEFAULT_IMAP_USER}"
+    smtp_server_origen = "env XOLOS_SMTP_SERVER" if "XOLOS_SMTP_SERVER" in os.environ else "fallback a IMAP_SERVER"
+    smtp_port_origen = "env XOLOS_SMTP_PORT" if "XOLOS_SMTP_PORT" in os.environ else f"default {DEFAULT_SMTP_PORT}"
+    log(
+        "Configuracion: "
+        f"timeout_socket={SOCKET_TIMEOUT}s, "
+        f"IMAP={IMAP_SERVER}:{IMAP_PORT} SSL, "
+        f"SMTP={SMTP_SERVER}:{SMTP_PORT} STARTTLS, "
+        f"usuario={'configurado' if IMAP_USER else 'FALTANTE'}, "
+        f"password={'configurado' if IMAP_PASS else 'FALTANTE'}"
+    )
+    log(
+        "Origen configuracion: "
+        f"XOLOS_IMAP_SERVER={imap_server_origen}, "
+        f"XOLOS_IMAP_PORT={imap_port_origen}, "
+        f"XOLOS_IMAP_USER={imap_user_origen}, "
+        f"XOLOS_SMTP_SERVER={smtp_server_origen}, "
+        f"XOLOS_SMTP_PORT={smtp_port_origen}"
+    )
 
 
 def cargar_historial():
@@ -67,6 +148,7 @@ def guardar_lead_json(nombre, email_cliente, asunto, origen, estrategia):
 # MOTOR DE ENVIO REAL (SMTP)
 # ==========================================
 def enviar_correo_real(destinatario, asunto, html_cuerpo):
+    servicio = "SMTP"
     try:
         msg = EmailMessage()
         msg["Subject"] = asunto
@@ -76,13 +158,58 @@ def enviar_correo_real(destinatario, asunto, html_cuerpo):
         msg.add_alternative(html_cuerpo, subtype="html")
 
         # Usamos el puerto 587 con STARTTLS
-        with smtplib.SMTP(IMAP_SERVER, 587, timeout=15) as server:
-            server.starttls()
-            server.login(IMAP_USER, IMAP_PASS)
-            server.send_message(msg)
+        resolver_host(servicio, SMTP_SERVER, SMTP_PORT)
+
+        etapa = "conexion SMTP"
+        try:
+            log(f"Conectando a SMTP {SMTP_SERVER}:{SMTP_PORT} (timeout={SOCKET_TIMEOUT}s)...")
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=SOCKET_TIMEOUT)
+            log("[OK] Conexion SMTP establecida.")
+        except (socket.timeout, TimeoutError, smtplib.SMTPException, OSError) as exc:
+            log_error_servicio(servicio, etapa, SMTP_SERVER, SMTP_PORT, exc)
+            log_fallo_tcp(servicio, SMTP_SERVER, SMTP_PORT, exc)
+            if es_fallo_tcp(exc):
+                raise FalloConectividadTCP(FALLO_TCP_MENSAJE) from exc
+            raise
+
+        try:
+            etapa = "STARTTLS SMTP"
+            try:
+                log(f"Iniciando STARTTLS SMTP en {SMTP_SERVER}:{SMTP_PORT}...")
+                server.starttls()
+                log("[OK] STARTTLS SMTP activo.")
+            except (smtplib.SMTPException, ssl.SSLError, OSError) as exc:
+                log_error_servicio(servicio, etapa, SMTP_SERVER, SMTP_PORT, exc)
+                raise
+
+            etapa = "login SMTP"
+            try:
+                log(f"Autenticando SMTP como {IMAP_USER}...")
+                server.login(IMAP_USER, IMAP_PASS)
+                log("[OK] Login SMTP exitoso.")
+            except smtplib.SMTPAuthenticationError as exc:
+                log_error_servicio(servicio, etapa, SMTP_SERVER, SMTP_PORT, exc)
+                raise
+            except (smtplib.SMTPException, OSError) as exc:
+                log_error_servicio(servicio, etapa, SMTP_SERVER, SMTP_PORT, exc)
+                raise
+
+            etapa = "envio SMTP"
+            try:
+                log(f"Enviando SMTP a {destinatario}...")
+                server.send_message(msg)
+                log("[OK] Mensaje SMTP enviado.")
+            except (smtplib.SMTPException, OSError) as exc:
+                log_error_servicio(servicio, etapa, SMTP_SERVER, SMTP_PORT, exc)
+                raise
+        finally:
+            try:
+                server.quit()
+            except (smtplib.SMTPException, OSError):
+                pass
         return True
     except Exception as e:
-        log(f"    [X] Error critico en envio SMTP: {e}")
+        log(f"    [X] Error critico en envio SMTP: {detalle_error(e)}")
         return False
 
 
@@ -147,6 +274,7 @@ def parsear_formspree(cuerpo_crudo):
 # ==========================================
 def leer_inbox():
     log(f"Iniciando ciclo (Modo Auto: {MODO_AUTO}). Conectando...")
+    log_configuracion()
     if not IMAP_PASS:
         log("ERROR: Contraseña IMAP no configurada.")
         return
@@ -159,12 +287,54 @@ def leer_inbox():
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
-        mail = imaplib.IMAP4_SSL(IMAP_SERVER, 993, ssl_context=ctx)
-        mail.login(IMAP_USER, IMAP_PASS)
-        mail.select("INBOX")
+        log("Contexto SSL IMAP creado (verificacion de certificado desactivada).")
 
-        status, data = mail.search(None, "UNSEEN")
+        resolver_host("IMAP", IMAP_SERVER, IMAP_PORT)
+
+        etapa = "conexion IMAP SSL"
+        try:
+            log(f"Conectando a IMAP SSL {IMAP_SERVER}:{IMAP_PORT} (timeout={SOCKET_TIMEOUT}s)...")
+            mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT, ssl_context=ctx)
+            log("[OK] Conexion IMAP SSL establecida.")
+        except (socket.timeout, TimeoutError, ssl.SSLError, OSError, imaplib.IMAP4.error) as exc:
+            log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+            log_fallo_tcp("IMAP", IMAP_SERVER, IMAP_PORT, exc)
+            if es_fallo_tcp(exc):
+                raise FalloConectividadTCP(FALLO_TCP_MENSAJE) from exc
+            raise
+
+        etapa = "login IMAP"
+        try:
+            log(f"Autenticando IMAP como {IMAP_USER}...")
+            mail.login(IMAP_USER, IMAP_PASS)
+            log("[OK] Login IMAP exitoso.")
+        except imaplib.IMAP4.error as exc:
+            log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+            raise
+        except OSError as exc:
+            log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+            raise
+
+        etapa = "seleccion INBOX"
+        try:
+            log("Seleccionando carpeta IMAP INBOX...")
+            mail.select("INBOX")
+            log("[OK] Carpeta INBOX seleccionada.")
+        except (imaplib.IMAP4.error, OSError) as exc:
+            log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+            raise
+
+        etapa = "busqueda IMAP UNSEEN"
+        try:
+            log("Buscando correos IMAP UNSEEN...")
+            status, data = mail.search(None, "UNSEEN")
+            log(f"Resultado search UNSEEN: status={status}, data={data}")
+        except (imaplib.IMAP4.error, OSError) as exc:
+            log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+            raise
         ids = data[0].split()
+        ids_encontrados = [num.decode("utf-8", errors="replace") for num in ids]
+        log(f"Mensajes IMAP UNSEEN encontrados: {ids_encontrados}")
         if not ids:
             log("-> No hay correos nuevos.")
             mail.logout()
@@ -172,7 +342,14 @@ def leer_inbox():
 
         for num_bytes in ids:
             num = num_bytes.decode("utf-8")
-            _, fetch_data = mail.fetch(num, "(RFC822)")
+            etapa = f"fetch IMAP mensaje {num}"
+            try:
+                log(f"Descargando mensaje IMAP {num}...")
+                _, fetch_data = mail.fetch(num, "(RFC822)")
+                log(f"[OK] Mensaje IMAP {num} descargado.")
+            except (imaplib.IMAP4.error, OSError) as exc:
+                log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+                raise
             msg = email.message_from_bytes(fetch_data[0][1])
 
             msg_id = msg.get("Message-ID", f"no-id-{num}")
@@ -219,9 +396,27 @@ def leer_inbox():
                 borrador["To"] = email_cliente
                 borrador.add_alternative(html_res, subtype="html")
 
-                mail.append(DRAFTS_FOLDER, "\\Draft", imaplib.Time2Internaldate(time.time()), borrador.as_bytes())
+                etapa = f"append IMAP borrador mensaje {num}"
+                try:
+                    log(f"Guardando borrador IMAP en {DRAFTS_FOLDER}...")
+                    status_append, resp_append = mail.append(
+                        DRAFTS_FOLDER,
+                        "\\Draft",
+                        imaplib.Time2Internaldate(time.time()),
+                        borrador.as_bytes(),
+                    )
+                    log(
+                        f"Resultado append Drafts: status={status_append}, "
+                        f"resp={resp_append}, carpeta={DRAFTS_FOLDER}"
+                    )
+                except (imaplib.IMAP4.error, OSError) as exc:
+                    log_error_servicio("IMAP", etapa, IMAP_SERVER, IMAP_PORT, exc)
+                    raise
+                if status_append != "OK":
+                    log(f"[ERROR] No se pudo guardar borrador para msg_id={msg_id} en carpeta={DRAFTS_FOLDER}")
+                    continue
                 mail.store(num, "+FLAGS", "\\Seen")
-                log("        [OK] Borrador creado.")
+                log(f"[OK] Borrador guardado y mensaje marcado en historial: {msg_id}")
 
             guardar_lead_json(nombre, email_cliente, asunto, origen, estrategia)
             historial.append(msg_id)
@@ -231,7 +426,7 @@ def leer_inbox():
         log("Ciclo finalizado.")
 
     except Exception as e:
-        log(f"ERROR: {e}")
+        log(f"ERROR ciclo principal: {detalle_error(e)}")
 
 
 if __name__ == "__main__":
