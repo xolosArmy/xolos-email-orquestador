@@ -11,6 +11,7 @@ import imaplib
 import os
 import re
 import ssl
+import time
 from contextlib import contextmanager
 from email.header import decode_header, make_header
 from email.message import EmailMessage, Message
@@ -217,7 +218,6 @@ def buscar_correos(
         _select(client, carpeta, readonly=True)
         status, data = client.uid("search", "CHARSET", "UTF-8", criteria)
         if status != "OK":
-            # Algunos servidores no aceptan CHARSET aunque sí soportan UTF-8.
             status, data = client.uid("search", None, criteria)
         if status != "OK":
             raise RuntimeError("Falló la búsqueda IMAP.")
@@ -276,7 +276,7 @@ def guardar_borrador(
         status, response = client.append(
             DRAFTS_FOLDER,
             "(\\Draft)",
-            imaplib.Time2Internaldate(None),
+            imaplib.Time2Internaldate(time.time()),
             draft.as_bytes(),
         )
         if status != "OK":
